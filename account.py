@@ -74,7 +74,7 @@ class AccountTemplate:
 
         new_account.childs = []
         for child in self.childs:
-            new_account['childs'].append(child.create_account_tree(company_id,
+            new_account.childs.append(child.create_account_tree(company_id,
                 template2type=template2type, template2account=template2account,
                 parent=new_account))
 
@@ -97,20 +97,18 @@ class TaxTemplate:
 
         childs = {}
         for tax in taxes:
-            childs[tax] = tax.childs
-            tax.childs = []
+            childs[tax['template']] = tax['childs']
+            tax['childs'] = []
 
-        vals = [x._save_values for x in taxes]
-
-        created_taxes = Tax.create(vals)
+        created_taxes = Tax.create(taxes)
         new_taxes = []
         for tax, childs2 in childs.iteritems():
             for child in childs2:
-                child.parent = get_parent(created_taxes, tax.template.id)
+                child['parent'] = get_parent(created_taxes, tax)
             new_taxes += childs2
 
         if new_taxes:
-            self.save_tax(list(set(new_taxes)))
+            self.save_tax(new_taxes)
 
     @classmethod
     def create_batch(cls, templates, company_id, template2tax_code,
@@ -134,9 +132,6 @@ class TaxTemplate:
 
     def create_tax_tree(self, company_id, template2tax_code, template2account,
             template2tax=None, parent_id=None):
-
-        pool = Pool()
-        Tax = pool.get('account.tax')
 
         if template2tax is None:
             template2tax = {}
@@ -176,18 +171,16 @@ class TaxTemplate:
             else:
                 vals['credit_note_tax_code'] = None
 
-            new_tax = Tax()
-            for key, value in vals.iteritems():
-                setattr(new_tax, key, value)
-
+            new_tax = vals
             template2tax[self.id] = new_tax
 
         else:
             new_tax = template2tax[self.id]
 
-        new_tax.childs = []
+        new_tax['template'] = self.id
+        new_tax['childs'] = []
         for child in self.childs:
-            new_tax.childs.append(child.create_tax_tree(company_id,
+            new_tax['childs'].append(child.create_tax_tree(company_id,
                     template2tax_code, template2account,
                     template2tax=template2tax, parent_id=None))
         return new_tax
