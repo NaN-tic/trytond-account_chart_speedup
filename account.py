@@ -4,7 +4,7 @@
 from trytond.pool import Pool, PoolMeta
 
 
-__all__ = ['AccountTemplate', 'CreateChart']
+__all__ = ['AccountTemplate', 'CreateChart', 'TaxTemplate']
 
 
 __metaclass__ = PoolMeta
@@ -79,6 +79,118 @@ class AccountTemplate:
                 parent=new_account))
 
         return new_account
+
+
+class TaxTemplate:
+
+    __name__ = 'account.tax.template'
+
+    @classmethod
+    def save_tax(self, taxes):
+
+        def get_parent(created_taxes, template):
+            for t in created_taxes:
+                if t.template.id == template:
+                    return t
+
+        Tax = Pool().get('account.tax')
+
+        childs = {}
+        for tax in taxes:
+            childs[tax] = tax.childs
+            tax.childs = []
+
+        vals = [x._save_values for x in taxes]
+
+        created_taxes = Tax.create(vals)
+        new_taxes = []
+        for tax, childs2 in childs.iteritems():
+            for child in childs2:
+                child.parent = get_parent(created_taxes, tax.template.id)
+            new_taxes += childs2
+
+        if new_taxes:
+            self.save_tax(list(set(new_taxes)))
+
+    @classmethod
+    def create_batch(cls, templates, company_id, template2tax_code,
+                template2account, template2tax=None, parent_id=None):
+
+        taxes = []
+        for tax_template in templates:
+            tax = tax_template.create_tax_tree(company_id,
+                template2tax_code=template2tax_code,
+                template2account=template2account,
+                template2tax=template2tax)
+
+            taxes.append(tax)
+
+        cls.save_tax(taxes)
+
+        Tax = Pool().get('account.tax')
+        taxes = Tax.search([])
+        for t in taxes:
+            template2tax[t.template.id] = t.id
+
+    def create_tax_tree(self, company_id, template2tax_code, template2account,
+            template2tax=None, parent_id=None):
+
+        pool = Pool()
+        Tax = pool.get('account.tax')
+
+        if template2tax is None:
+            template2tax = {}
+
+        if not template2tax.get(self.id):
+            vals = self._get_tax_value()
+            vals['company'] = company_id
+
+            if self.invoice_account:
+                vals['invoice_account'] = \
+                    template2account[self.invoice_account.id]
+            else:
+                vals['invoice_account'] = None
+            if self.credit_note_account:
+                vals['credit_note_account'] = \
+                    template2account[self.credit_note_account.id]
+            else:
+                vals['credit_note_account'] = None
+            if self.invoice_base_code:
+                vals['invoice_base_code'] = \
+                    template2tax_code[self.invoice_base_code.id]
+            else:
+                vals['invoice_base_code'] = None
+            if self.invoice_tax_code:
+                vals['invoice_tax_code'] = \
+                    template2tax_code[self.invoice_tax_code.id]
+            else:
+                vals['invoice_tax_code'] = None
+            if self.credit_note_base_code:
+                vals['credit_note_base_code'] = \
+                    template2tax_code[self.credit_note_base_code.id]
+            else:
+                vals['credit_note_base_code'] = None
+            if self.credit_note_tax_code:
+                vals['credit_note_tax_code'] = \
+                    template2tax_code[self.credit_note_tax_code.id]
+            else:
+                vals['credit_note_tax_code'] = None
+
+            new_tax = Tax()
+            for key, value in vals.iteritems():
+                setattr(new_tax, key, value)
+
+            template2tax[self.id] = new_tax
+
+        else:
+            new_tax = template2tax[self.id]
+
+        new_tax.childs = []
+        for child in self.childs:
+            new_tax.childs.append(child.create_tax_tree(company_id,
+                    template2tax_code, template2account,
+                    template2tax=template2tax, parent_id=None))
+        return new_tax
 
 
 class CreateChart:

@@ -7,6 +7,7 @@ from .account import *
 def register():
     Pool.register(
         AccountTemplate,
+        TaxTemplate,
         module='account_chart_speedup', type_='model')
     Pool.register(
         CreateChart,
