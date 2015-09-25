@@ -41,20 +41,30 @@ class AccountTemplate:
     def create_account(self, company_id, template2account=None,
             template2type=None, parent=None):
 
-        account = self.create_account_tree(company_id, template2account,
-            template2type, parent)
+        if self.id not in template2account:
+            account = self.create_account_tree(company_id, template2account,
+                template2type, parent)
 
-        # Algorithm to create accounts in batch
-        self.save_account([account])
+            # Algorithm to create accounts in batch
+            self.save_account([account])
 
-        # Make coorelation template 2 account needed for tax creation
-        Account = Pool().get('account.account')
-        accounts = Account.search([])
-        for acc in accounts:
-            template2account[acc.template.id] = acc.id
+            # Make coorelation template 2 account needed for tax creation
+            Account = Pool().get('account.account')
+            accounts = Account.search([
+                    ('company', '=', company_id),
+                    ])
+            for acc in accounts:
+                template2account[acc.template.id] = acc.id
+        else:
+            for child in self.childs:
+                child.create_account(company_id,
+                    template2account=template2account,
+                    template2type=template2type, parent=self)
 
     def create_account_tree(self, company_id, template2account=None,
             template2type=None, parent=None):
+        pool = Pool()
+        Account = pool.get('account.account')
 
         if template2type is None:
             template2type = {}
@@ -66,8 +76,8 @@ class AccountTemplate:
         nacc['company'] = company_id
         nacc['type'] = (template2type.get(self.type.id) if self.type
             else None)
+        nacc['parent'] = (template2account.get(parent.id) if parent else None)
 
-        Account = Pool().get('account.account')
         new_account = Account()
         for key, value in nacc.iteritems():
             setattr(new_account, key, value)
@@ -75,8 +85,8 @@ class AccountTemplate:
         new_account.childs = []
         for child in self.childs:
             new_account.childs.append(child.create_account_tree(company_id,
-                template2type=template2type, template2account=template2account,
-                parent=new_account))
+                template2type=template2type,
+                    template2account=template2account))
 
         return new_account
 
