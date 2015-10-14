@@ -11,4 +11,5 @@ def register():
         module='account_chart_speedup', type_='model')
     Pool.register(
         CreateChart,
+        UpdateChart,
         module='account_chart_speedup', type_='wizard')

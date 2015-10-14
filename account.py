@@ -2,9 +2,10 @@
 #this repository contains the full copyright notices and license terms.
 
 from trytond.pool import Pool, PoolMeta
+from trytond.transaction import Transaction
 
 
-__all__ = ['AccountTemplate', 'CreateChart', 'TaxTemplate']
+__all__ = ['AccountTemplate', 'CreateChart', 'TaxTemplate', 'UpdateChart']
 
 
 __metaclass__ = PoolMeta
@@ -212,4 +213,57 @@ class CreateChart:
         Account.parent.left = 'left'
         Account.parent.right = 'right'
         Account._rebuild_tree('parent', None, 0)
+        return res
+
+
+class UpdateChart:
+
+    __name__ = 'account.update_chart'
+
+
+    def transition_update(self):
+
+        def _rebuild_tree():
+            cr = Transaction().cursor
+            table = 'account_account'
+            field = 'parent'
+
+            def browse_rec(root, pos=0):
+                where = field + '=' + str(root) + 'AND company = ' + company
+
+                if not root:
+                    where = parent_field + 'IS NULL'
+
+                cr.execute('SELECT id FROM %s WHERE %s \
+                    ORDER BY %s' % (table, where, field))
+                pos2 = pos + 1
+                childs = cr.fetchall()
+                for id in childs:
+                    pos2 = browse_rec(id[0], pos2)
+                cr.execute('update %s set "left"=%s, "right"=%s\
+                    where id=%s' % (table, pos, pos2, root))
+                return pos2 + 1
+
+
+            where = field + 'IS NULL AND company = ' + company
+            query = 'SELECT id FROM %s WHERE %s IS NULL order by %s' % (
+                table, field, field)
+            pos = 0
+            cr.execute(query)
+            for (root,) in cr.fetchall():
+                pos = browse_rec(root, pos)
+            return True
+
+        Account = Pool().get('account.account')
+
+        Account.parent.left = None
+        Account.parent.right = None
+
+        res = super(UpdateChart, self).transition_update()
+
+        Account.parent.left = 'left'
+        Account.parent.right = 'right'
+
+        company = str(Transaction().context.get('company'))
+        _rebuild_tree()
         return res
