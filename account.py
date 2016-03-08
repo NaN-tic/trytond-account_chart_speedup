@@ -53,6 +53,7 @@ class AccountTemplate:
             Account = Pool().get('account.account')
             accounts = Account.search([
                     ('company', '=', company_id),
+                    ('template', '!=', None),
                     ])
             for acc in accounts:
                 template2account[acc.template.id] = acc.id
