@@ -86,9 +86,9 @@ class AccountTemplate:
 
         new_account.childs = []
         for child in self.childs:
-            new_account.childs.append(child.create_account_tree(company_id,
+            new_account.childs += (child.create_account_tree(company_id,
                 template2type=template2type,
-                    template2account=template2account))
+                    template2account=template2account), )
 
         return new_account
 
