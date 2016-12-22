@@ -230,10 +230,10 @@ class UpdateChart:
             field = 'parent'
 
             def browse_rec(root, pos=0):
-                where = field + '=' + str(root) + 'AND company = ' + company
+                where = field + ' = ' + str(root) + ' AND company = ' + company
 
                 if not root:
-                    where = parent_field + 'IS NULL'
+                    where = parent_field + ' IS NULL'
 
                 cr.execute('SELECT id FROM %s WHERE %s \
                     ORDER BY %s' % (table, where, field))
@@ -246,7 +246,7 @@ class UpdateChart:
                 return pos2 + 1
 
 
-            where = field + 'IS NULL AND company = ' + company
+            where = field + ' IS NULL AND company = ' + company
             query = 'SELECT id FROM %s WHERE %s IS NULL order by %s' % (
                 table, field, field)
             pos = 0
