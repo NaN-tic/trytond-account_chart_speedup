@@ -225,7 +225,7 @@ class UpdateChart:
     def transition_update(self):
 
         def _rebuild_tree():
-            cr = Transaction().cursor
+            cr = Transaction().connection.cursor()
             table = 'account_account'
             field = 'parent'
 
