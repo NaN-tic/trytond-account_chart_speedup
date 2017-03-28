@@ -246,7 +246,6 @@ class UpdateChart:
                 return pos2 + 1
 
 
-            where = field + ' IS NULL AND company = ' + company
             query = 'SELECT id FROM %s WHERE %s IS NULL order by %s' % (
                 table, field, field)
             pos = 0
