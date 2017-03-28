@@ -246,7 +246,6 @@ class UpdateChart:
                 return pos2 + 1
 
 
-            where = field + ' IS NULL AND company = ' + company
             query = 'SELECT id FROM %s WHERE %s IS NULL order by %s' % (
                 table, field, field)
             pos = 0
@@ -260,10 +259,11 @@ class UpdateChart:
         Account.parent.left = None
         Account.parent.right = None
 
-        res = super(UpdateChart, self).transition_update()
-
-        Account.parent.left = 'left'
-        Account.parent.right = 'right'
+        try:
+            res = super(UpdateChart, self).transition_update()
+        finally:
+            Account.parent.left = 'left'
+            Account.parent.right = 'right'
 
         company = str(Transaction().context.get('company'))
         _rebuild_tree()
